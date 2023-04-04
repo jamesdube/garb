@@ -1,0 +1,57 @@
+# build
+name: workflow
+
+on:
+  push:
+  
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: build
+        uses: jamesdube/actions/mvn@main
+        with:
+          args: package -Dmaven.test.skip
+      - name: upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: jar-file
+          path: target
+          retention-days: 5
+          
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: test
+        uses: jamesdube/actions/mvn@main
+        with:
+          args: test
+          
+  package:
+    runs-on: ubuntu-latest
+    needs: 
+      - build
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v3
+      - name: download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: jar-file
+          path: target
+      - name: build
+        uses: jamesdube/actions/docker@main
+        with:
+          artifact: jar-file
+          token: ${{ secrets.GITHUB_TOKEN }}
